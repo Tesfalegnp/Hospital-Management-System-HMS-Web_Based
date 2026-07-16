@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ===============================
+// ENUMS
+// ===============================
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  DOCTOR
+  NURSE
+  RECEPTIONIST
+  PHARMACIST
+  LAB_TECHNICIAN
+  ACCOUNTANT
+  PATIENT
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+// ===============================
+// HOSPITAL
+// ===============================
+
+model Hospital {
+  id String @id @default(cuid())
+
+  name String
+  code String @unique
+
+  email   String? @unique
+  phone   String?
+  website String?
+
+  address String?
+  city    String?
+  state   String?
+  country String?
+
+  isActive Boolean @default(true)
+
+  branches Branch[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  users User[]
+
+  @@index([name])
+}
+
+// ===============================
+// BRANCH
+// ===============================
+
+model Branch {
+  id String @id @default(cuid())
+
+  hospitalId String
+
+  name String
+  code String
+
+  email String?
+  phone String?
+
+  address String?
+  city    String?
+  state   String?
+  country String?
+
+  isActive Boolean @default(true)
+
+  hospital Hospital @relation(fields: [hospitalId], references: [id], onDelete: Restrict)
+
+  departments Department[]
+
+  users User[]
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@unique([hospitalId, code])
+  @@index([hospitalId])
+}
+
+// ===============================
+// DEPARTMENT
+// ===============================
+
+model Department {
+  id String @id @default(cuid())
+
+  branchId String
+
+  name String
+
+  description String?
+
+  isActive Boolean @default(true)
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  users User[]
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  deletedAt DateTime?
+
+  @@unique([branchId, name])
+  @@index([branchId])
+}
+
+// ===============================
+// USER
+// ===============================
+
+model User {
+  id String @id @default(cuid())
+
+  firstName String
+
+  lastName String
+
+  email String @unique
+
+  phone String? @unique
+
+  password String
+
+  gender Gender?
+
+  role Role
+
+  hospitalId String?
+
+  branchId String?
+
+  departmentId String?
+
+  hospital Hospital? @relation(fields: [hospitalId], references: [id], onDelete: SetNull)
+
+  branch Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  isActive Boolean @default(true)
+
+  isEmailVerified Boolean @default(false)
+
+  lastLogin DateTime?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  deletedAt DateTime?
+
+  @@index([email])
+  @@index([role])
+  @@index([branchId])
+  @@index([departmentId])
+}
