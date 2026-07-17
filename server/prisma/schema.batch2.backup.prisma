@@ -50,16 +50,6 @@ enum MaritalStatus {
   OTHER
 }
 
-enum AppointmentStatus {
-  SCHEDULED
-  CONFIRMED
-  CHECKED_IN
-  IN_PROGRESS
-  COMPLETED
-  CANCELLED
-  NO_SHOW
-}
-
 // ================================
 // HOSPITAL
 // ================================
@@ -138,9 +128,6 @@ model Branch {
 
   deletedAt DateTime?
 
-  appointments  Appointment[]
-  consultations Consultation[]
-
   @@unique([hospitalId, code])
   @@index([hospitalId])
 }
@@ -169,8 +156,6 @@ model Department {
   updatedAt DateTime @updatedAt
 
   deletedAt DateTime?
-
-  appointments  Appointment[]
 
   @@unique([branchId, name])
   @@index([branchId])
@@ -258,9 +243,6 @@ model Doctor {
 
   deletedAt DateTime?
 
-  appointments  Appointment[]
-  consultations Consultation[]
-
   @@index([specialization])
 }
 
@@ -297,86 +279,5 @@ model Patient {
 
   deletedAt DateTime?
 
-  appointments  Appointment[]
-  consultations Consultation[]
-
   @@index([bloodGroup])
-}
-
-// ================================
-// APPOINTMENT
-// ================================
-
-model Appointment {
-  id              String            @id @default(cuid())
-  
-  patientId       String
-  patient         Patient           @relation(fields: [patientId], references: [id], onDelete: Restrict)
-  
-  doctorId        String
-  doctor          Doctor            @relation(fields: [doctorId], references: [id], onDelete: Restrict)
-  
-  branchId        String
-  branch          Branch            @relation(fields: [branchId], references: [id], onDelete: Restrict)
-  
-  departmentId    String?
-  department      Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
-
-  consultation    Consultation?
-
-  appointmentDate DateTime          
-  startTime       DateTime          
-  endTime         DateTime          
-  
-  status          AppointmentStatus @default(SCHEDULED)
-  reason          String?           
-  notes           String?           
-
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  deletedAt       DateTime?
-
-  @@index([patientId])
-  @@index([doctorId])
-  @@index([branchId])
-  @@index([appointmentDate])
-}
-
-// ================================
-// CONSULTATION
-// ================================
-
-model Consultation {
-  id                  String       @id @default(cuid())
-
-  patientId           String
-  patient             Patient      @relation(fields: [patientId], references: [id], onDelete: Restrict)
-
-  doctorId            String
-  doctor              Doctor       @relation(fields: [doctorId], references: [id], onDelete: Restrict)
-
-  branchId            String
-  branch              Branch       @relation(fields: [branchId], references: [id], onDelete: Restrict)
-
-  appointmentId       String?      @unique 
-  appointment         Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
-
-  bloodPressure       String?      
-  heartRate           Int?         
-  temperature         Decimal?     
-  respiratoryRate     Int?         
-  weight              Decimal?     
-
-  chiefComplaint      String?      @db.Text
-  physicalExamination String?      @db.Text
-  diagnosis           String?      @db.Text 
-  treatmentPlan       String?      @db.Text
-
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
-  deletedAt           DateTime?
-
-  @@index([patientId])
-  @@index([doctorId])
-  @@index([branchId])
 }

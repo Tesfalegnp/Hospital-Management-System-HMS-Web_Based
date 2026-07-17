@@ -1,6 +1,6 @@
-import app from "./app";
-import { config } from "./config";
-import { logger } from "./logger";
+import app from "./app.js";
+import { config } from "./config/index.js";
+import { logger } from "./logger/index.js";
 
 const PORT = config.PORT;
 

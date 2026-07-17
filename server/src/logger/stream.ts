@@ -1,4 +1,4 @@
-import { logger } from "./index";
+import { logger } from "./index.js";
 
 export const stream = {
   write: (message: string) => {

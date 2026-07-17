@@ -4,7 +4,7 @@ import path from "node:path";
 import winston from "winston";
 import DailyRotateFile from "winston-daily-rotate-file";
 
-import { config } from "../config";
+import { config } from "../config/index.js";
 
 // Create logs directory if it doesn't exist
 const logsDirectory = path.join(process.cwd(), "logs");

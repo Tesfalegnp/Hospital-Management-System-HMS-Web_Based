@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 
-import { config } from "../config";
-import { logger } from "../logger";
-import { AppError } from "../utils/AppError";
+import { config } from "../config/index.js";
+import { logger } from "../logger/index.js";
+import { AppError } from "../utils/AppError.js";
 
 export const errorHandler = (
   err: Error,
@@ -10,15 +10,14 @@ export const errorHandler = (
   res: Response,
   _next: NextFunction,
 ): void => {
-  let error = err;
+  let appError: AppError;
 
-  if (!(error instanceof AppError)) {
-    logger.error(error);
-
-    error = new AppError(
-      config.NODE_ENV === "production"
-        ? "Internal Server Error"
-        : error.message,
+  if (err instanceof AppError) {
+    appError = err;
+  } else {
+    logger.error(err);
+    appError = new AppError(
+      config.NODE_ENV === "production" ? "Internal Server Error" : err.message,
       500,
     );
   }
@@ -26,17 +25,17 @@ export const errorHandler = (
   logger.error({
     method: req.method,
     path: req.originalUrl,
-    statusCode: error.statusCode,
-    message: error.message,
-    stack: error.stack,
+    statusCode: appError.statusCode,
+    message: appError.message,
+    stack: appError.stack,
   });
 
-  res.status(error.statusCode).json({
+  res.status(appError.statusCode).json({
     success: false,
-    status: error.status,
-    message: error.message,
+    status: appError.status,
+    message: appError.message,
     ...(config.NODE_ENV === "development" && {
-      stack: error.stack,
+      stack: appError.stack,
     }),
   });
 };

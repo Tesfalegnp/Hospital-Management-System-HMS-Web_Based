@@ -4,10 +4,12 @@ import helmet from "helmet";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 
-import { config } from "./config";
-import { morganMiddleware } from "./logger/morgan";
-import { notFound } from "./middleware/notFound";
-import { errorHandler } from "./middleware/errorHandler";
+import { config } from "./config/index.js";
+import { morganMiddleware } from "./logger/morgan.js";
+import { notFound } from "./middleware/notFound.js";
+import { errorHandler } from "./middleware/errorHandler.js";
+import appointmentRoutes from "./routes/appointment.routes.js";
+import consultationRoutes from "./routes/consultation.routes.js";
 
 const app = express();
 
@@ -57,6 +59,12 @@ app.get("/api/v1/health", (_req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+/**
+ * API Routes
+ */
+app.use("/api/v1/appointments", appointmentRoutes);
+app.use("/api/v1/consultations", consultationRoutes);
 
 /**
  * 404 Middleware
