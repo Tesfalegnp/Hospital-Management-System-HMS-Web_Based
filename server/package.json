@@ -6,9 +6,10 @@
   "type": "module",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "NODE_OPTIONS=\"--dns-result-order=ipv4first\" tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "NODE_OPTIONS=\"--dns-result-order=ipv4first\" node dist/server.js",
+    "seed": "NODE_OPTIONS=\"--dns-result-order=ipv4first\" tsx src/database/seed.ts",
     "check": "tsc --noEmit",
     "lint": "eslint .",
     "format": "prettier --write ."

@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { validate } from "../middleware/validate.js";
+import { authenticateJWT, requireRoles } from "../middleware/auth.middleware.js";
+import { Role } from "@prisma/client";
 import {
   recordEncounter,
   updateEncounter,
@@ -13,13 +15,31 @@ import {
 
 const router = Router();
 
-// Record a new clinical encounter/consultation
-router.post("/", validate(recordConsultationSchema), recordEncounter);
+// All consultation routes require authentication
+router.use(authenticateJWT);
 
-// Update details of a consultation
-router.patch("/:id", validate(updateConsultationSchema), updateEncounter);
+// Record a new clinical encounter/consultation (Restricted to Doctor and Admin)
+router.post(
+  "/",
+  requireRoles(Role.DOCTOR, Role.ADMIN),
+  validate(recordConsultationSchema),
+  recordEncounter
+);
 
-// Retrieve previous consultations history for a patient
-router.get("/patient/:patientId", validate(queryHistorySchema), getPatientHistory);
+// Update details of a consultation (Restricted to Doctor and Admin)
+router.patch(
+  "/:id",
+  requireRoles(Role.DOCTOR, Role.ADMIN),
+  validate(updateConsultationSchema),
+  updateEncounter
+);
+
+// Retrieve previous consultations history for a patient (Viewable by Doctor, Nurse, Admin)
+router.get(
+  "/patient/:patientId",
+  requireRoles(Role.DOCTOR, Role.NURSE, Role.ADMIN),
+  validate(queryHistorySchema),
+  getPatientHistory
+);
 
 export default router;
