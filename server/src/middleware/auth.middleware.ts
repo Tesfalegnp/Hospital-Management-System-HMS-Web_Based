@@ -8,7 +8,11 @@ import { Role } from "@prisma/client";
  * Middleware to authenticate request using JWT from HTTP-only cookies.
  */
 export const authenticateJWT = (req: Request, res: Response, next: NextFunction) => {
-  const token = req.cookies.accessToken;
+  let token = req.cookies?.accessToken;
+
+  if (!token && req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+    token = req.headers.authorization.split(" ")[1];
+  }
 
   if (!token) {
     return next(new AppError("Authentication required", 401));
@@ -16,12 +20,12 @@ export const authenticateJWT = (req: Request, res: Response, next: NextFunction)
 
   try {
     const decoded = jwt.verify(token, config.JWT_SECRET) as { id: string; role: Role };
-    
+
     req.user = {
       id: decoded.id,
       role: decoded.role,
     };
-    
+
     next();
   } catch (error) {
     next(new AppError("Invalid or expired session token", 401));

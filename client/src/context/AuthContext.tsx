@@ -36,10 +36,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       try {
         const response = await api.post("/auth/refresh");
         if (response.data?.success && response.data?.data) {
+          if (response.data.accessToken) {
+            localStorage.setItem("token", response.data.accessToken);
+          }
           setUser(response.data.data);
         }
       } catch (error) {
         // Silent catch: no active sessions or invalid tokens
+        localStorage.removeItem("token");
         setUser(null);
       } finally {
         setIsLoading(false);
@@ -54,9 +58,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const response = await api.post("/auth/login", credentials);
       if (response.data?.success && response.data?.data) {
+        if (response.data.accessToken) {
+          localStorage.setItem("token", response.data.accessToken);
+        }
         setUser(response.data.data);
       }
     } catch (error) {
+      localStorage.removeItem("token");
       setUser(null);
       throw error;
     } finally {
@@ -71,6 +79,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     } catch (error) {
       // Clear state regardless of server logout response
     } finally {
+      localStorage.removeItem("token");
       setUser(null);
       setIsLoading(false);
     }

@@ -4,7 +4,7 @@ import api from "../../services/api";
 import Button from "../../components/ui/Button";
 import {
   UserPlus, Search, Edit2, Key, CheckCircle, XCircle, Users,
-  Home, Briefcase, Filter, X, ArrowLeft, ArrowRight, ShieldCheck
+  Home, Briefcase, Filter, X, ArrowLeft, ArrowRight
 } from "lucide-react";
 
 interface LookupItem {

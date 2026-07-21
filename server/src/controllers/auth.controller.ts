@@ -15,7 +15,7 @@ const sanitizeUser = (user: any) => {
 const getCookieOptions = (maxAge: number) => ({
   httpOnly: true,
   secure: config.NODE_ENV === "production",
-  sameSite: "strict" as const,
+  sameSite: config.NODE_ENV === "production" ? ("strict" as const) : ("lax" as const),
   maxAge,
 });
 
@@ -56,11 +56,17 @@ export const loginUser = asyncHandler(async (req: Request, res: Response) => {
     success: true,
     message: "Logged in successfully",
     data: sanitizeUser(user),
+    accessToken,
+    refreshToken,
   });
 });
 
 export const logoutUser = asyncHandler(async (req: Request, res: Response) => {
-  const { refreshToken } = req.cookies;
+  let refreshToken = req.cookies?.refreshToken;
+
+  if (!refreshToken && req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+    refreshToken = req.headers.authorization.split(" ")[1];
+  }
 
   if (refreshToken) {
     try {
@@ -82,7 +88,11 @@ export const logoutUser = asyncHandler(async (req: Request, res: Response) => {
 });
 
 export const refreshSession = asyncHandler(async (req: Request, res: Response) => {
-  const { refreshToken: oldRefreshToken } = req.cookies;
+  let oldRefreshToken = req.cookies?.refreshToken;
+
+  if (!oldRefreshToken && req.headers.authorization && req.headers.authorization.startsWith("Bearer ")) {
+    oldRefreshToken = req.headers.authorization.split(" ")[1];
+  }
 
   if (!oldRefreshToken) {
     throw new AppError("No session token provided", 401);
@@ -97,5 +107,7 @@ export const refreshSession = asyncHandler(async (req: Request, res: Response) =
     success: true,
     message: "Session refreshed successfully",
     data: sanitizeUser(user),
+    accessToken,
+    refreshToken,
   });
 });

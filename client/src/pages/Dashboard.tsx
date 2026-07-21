@@ -4,10 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import {
-  Users, Stethoscope, Calendar, Clock, LogIn, LogOut, Microscope,
+  Users, Stethoscope, Calendar, Clock, LogIn, Microscope,
   AlertCircle, Pill, ShoppingBag, AlertTriangle, CreditCard, ShieldCheck, Activity,
-  Bed, CheckCircle, TrendingUp, UserCog, History, Bell, ArrowRight, PlusCircle,
-  Settings, RefreshCw, Briefcase, FileText, FileSpreadsheet, Lock
+  Bed, CheckCircle, TrendingUp, UserCog, History, ArrowRight, PlusCircle,
+  Settings, RefreshCw, FileText, FileSpreadsheet, Lock, ClipboardList, SlidersHorizontal
 } from "lucide-react";
 
 interface Appointment {
@@ -85,6 +85,10 @@ export const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const branchId = user?.branchId || "default-branch-id";
   const userRole = user?.role || "PATIENT";
+
+  const handleStartConsultation = (_id: string) => {
+    navigate("/consultations");
+  };
 
   // General Queries
   const { data: apptsData, refetch: refetchAppts, isError: isApptsError } = useQuery({

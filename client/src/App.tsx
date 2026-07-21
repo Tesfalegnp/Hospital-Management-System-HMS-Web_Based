@@ -1,8 +1,7 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Outlet } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./context/AuthContext";
-import Sidebar from "./components/layout/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import BookAppointment from "./pages/Appointments/BookAppointment";
 import RecordEncounter from "./pages/Consultations/RecordEncounter";
@@ -18,6 +17,8 @@ import BedBoard from "./pages/IPD/BedBoard";
 import PatientChart from "./pages/IPD/PatientChart";
 import UserManagement from "./pages/Admin/UserManagement";
 
+
+import EnterpriseLayout from "./components/layout/EnterpriseLayout";
 
 // Initialize the TanStack query client for caching and data sync
 const queryClient = new QueryClient({
@@ -40,19 +41,7 @@ export const App: React.FC = () => {
 
             {/* Protected Workspace Layout */}
             <Route element={<ProtectedRoute />}>
-              <Route
-                element={
-                  <div className="flex min-h-screen bg-gray-50 text-gray-900 w-full">
-                    {/* Sidebar Navigation */}
-                    <Sidebar />
-
-                    {/* Page Container */}
-                    <main className="flex-1 p-8 overflow-y-auto">
-                      <Outlet />
-                    </main>
-                  </div>
-                }
-              >
+              <Route element={<EnterpriseLayout />}>
                 {/* General dashboard access */}
                 <Route path="/" element={<Dashboard />} />
 
