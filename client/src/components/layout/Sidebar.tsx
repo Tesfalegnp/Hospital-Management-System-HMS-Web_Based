@@ -3,9 +3,10 @@ import { Link, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Calendar, FileText, LogOut, ClipboardList, Pill, SlidersHorizontal,
   Users, Stethoscope, ShieldCheck, Activity, Bed, Microscope, HeartHandshake,
-  FileSpreadsheet, Settings, History, ShieldAlert, UserCog
+  FileSpreadsheet, Settings, History, ShieldAlert, UserCog, Key
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import PermissionGate from "../auth/PermissionGate";
 
 interface SidebarItemProps {
   to: string;
@@ -142,7 +143,12 @@ export const Sidebar: React.FC = () => {
             {renderSectionHeader("System Management")}
             <div className="space-y-1">
               <SidebarItem to="/admin/users" label="User Accounts CRUD" icon={<UserCog className="h-4 w-4 text-indigo-600" />} active={location.pathname === "/admin/users"} />
-              <SidebarItem to="#" label="Rosters & Roles" icon={<ShieldAlert className="h-4 w-4" />} active={false} isPlaceholder />
+              <PermissionGate permission="system:permission:view">
+                <SidebarItem to="/admin/permissions" label="Permission Registry" icon={<Key className="h-4 w-4 text-indigo-600" />} active={location.pathname === "/admin/permissions"} />
+              </PermissionGate>
+              <PermissionGate permission="system:role:view">
+                <SidebarItem to="/admin/roles" label="Enterprise Roles" icon={<ShieldAlert className="h-4 w-4 text-indigo-600" />} active={location.pathname === "/admin/roles"} />
+              </PermissionGate>
               <SidebarItem to="#" label="Branch Config" icon={<Settings className="h-4 w-4" />} active={false} isPlaceholder />
               <SidebarItem to="#" label="Departments Config" icon={<Settings className="h-4 w-4" />} active={false} isPlaceholder />
               <SidebarItem to="#" label="Security Audit Logs" icon={<History className="h-4 w-4" />} active={false} isPlaceholder />

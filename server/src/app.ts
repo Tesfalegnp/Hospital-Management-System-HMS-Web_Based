@@ -19,7 +19,8 @@ import prescriptionRoutes from "./routes/prescription.routes.js";
 import billingRoutes from "./routes/billing.routes.js";
 import ipdRoutes from "./routes/ipd.routes.js";
 import userRoutes from "./routes/user.routes.js";
-
+import permissionRoutes from "./routes/permission.routes.js";
+import roleRoutes from "./routes/role.routes.js";
 
 const app = express();
 
@@ -85,6 +86,8 @@ app.use("/api/v1/pharmacy/prescriptions", prescriptionRoutes);
 app.use("/api/v1/billing", billingRoutes);
 app.use("/api/v1/ipd", ipdRoutes);
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/permissions", permissionRoutes);
+app.use("/api/v1/roles", roleRoutes);
 
 
 /**

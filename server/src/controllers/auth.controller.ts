@@ -111,3 +111,40 @@ export const refreshSession = asyncHandler(async (req: Request, res: Response) =
     refreshToken,
   });
 });
+
+/**
+ * Endpoint handler to resolve current authenticated user's effective permissions.
+ */
+export const getUserPermissions = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user || !req.user.id) {
+    throw new AppError("Authentication required", 401);
+  }
+
+  const { permissionService } = await import("../services/permission.service.js");
+  const effectivePermissionsSet = await permissionService.getEffectivePermissions(req.user.id, {
+    hospitalId: req.user.hospitalId,
+    branchId: req.user.branchId,
+  });
+
+  const permissionList = Array.from(effectivePermissionsSet);
+
+  // Fallback defaults based on Role enum if dynamic assignments are not yet populated
+  if (permissionList.length === 0 && req.user.role) {
+    if (req.user.role === "SUPER_ADMIN" || req.user.role === "ADMIN") {
+      permissionList.push(
+        "system:user:view",
+        "system:user:create",
+        "system:user:edit",
+        "system:role:view",
+        "system:role:create",
+        "system:audit_log:view"
+      );
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    message: "User permissions retrieved successfully",
+    data: permissionList,
+  });
+});

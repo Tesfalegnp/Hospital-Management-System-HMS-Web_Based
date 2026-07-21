@@ -2,6 +2,7 @@ import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "./context/AuthContext";
+import { PermissionProvider } from "./context/PermissionContext";
 import Dashboard from "./pages/Dashboard";
 import BookAppointment from "./pages/Appointments/BookAppointment";
 import RecordEncounter from "./pages/Consultations/RecordEncounter";
@@ -16,6 +17,8 @@ import CashierPortal from "./pages/Billing/CashierPortal";
 import BedBoard from "./pages/IPD/BedBoard";
 import PatientChart from "./pages/IPD/PatientChart";
 import UserManagement from "./pages/Admin/UserManagement";
+import PermissionManagement from "./pages/Admin/PermissionManagement";
+import RoleManagement from "./pages/Admin/RoleManagement";
 
 
 import EnterpriseLayout from "./components/layout/EnterpriseLayout";
@@ -34,37 +37,38 @@ export const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router>
-          <Routes>
-            {/* Public Auth Route */}
-            <Route path="/login" element={<Login />} />
+        <PermissionProvider>
+          <Router>
+            <Routes>
+              {/* Public Auth Route */}
+              <Route path="/login" element={<Login />} />
 
-            {/* Protected Workspace Layout */}
-            <Route element={<ProtectedRoute />}>
-              <Route element={<EnterpriseLayout />}>
-                {/* General dashboard access */}
-                <Route path="/" element={<Dashboard />} />
+              {/* Protected Workspace Layout */}
+              <Route element={<ProtectedRoute />}>
+                <Route element={<EnterpriseLayout />}>
+                  {/* General dashboard access */}
+                  <Route path="/" element={<Dashboard />} />
 
-                {/* Appointment scheduling: Restricted to Receptionist and Admin */}
-                <Route element={<ProtectedRoute allowedRoles={["RECEPTIONIST", "ADMIN"]} />}>
-                  <Route path="/appointments" element={<BookAppointment />} />
-                </Route>
+                  {/* Appointment scheduling: Restricted to Receptionist and Admin */}
+                  <Route element={<ProtectedRoute allowedRoles={["RECEPTIONIST", "ADMIN"]} />}>
+                    <Route path="/appointments" element={<BookAppointment />} />
+                  </Route>
 
-                {/* Clinical consultations: Restricted to Doctor and Admin */}
-                <Route element={<ProtectedRoute allowedRoles={["DOCTOR", "ADMIN"]} />}>
-                  <Route path="/consultations" element={<RecordEncounter />} />
-                </Route>
+                  {/* Clinical consultations: Restricted to Doctor and Admin */}
+                  <Route element={<ProtectedRoute allowedRoles={["DOCTOR", "ADMIN"]} />}>
+                    <Route path="/consultations" element={<RecordEncounter />} />
+                  </Route>
 
-                {/* Inpatient Department (IPD) Workspace: Restricted to Doctors, Nurses, and Admins */}
-                <Route element={<ProtectedRoute allowedRoles={["DOCTOR", "NURSE", "ADMIN"]} />}>
-                  <Route path="/ipd/board" element={<BedBoard />} />
-                  <Route path="/ipd/admissions/:id" element={<PatientChart />} />
-                </Route>
+                  {/* Inpatient Department (IPD) Workspace: Restricted to Doctors, Nurses, and Admins */}
+                  <Route element={<ProtectedRoute allowedRoles={["DOCTOR", "NURSE", "ADMIN"]} />}>
+                    <Route path="/ipd/board" element={<BedBoard />} />
+                    <Route path="/ipd/admissions/:id" element={<PatientChart />} />
+                  </Route>
 
-                {/* Laboratory Workspace: Restricted to Lab Techs and Admins */}
-                <Route element={<ProtectedRoute allowedRoles={["LAB_TECHNICIAN", "ADMIN"]} />}>
-                  <Route path="/labs/queue" element={<LabQueue />} />
-                </Route>
+                  {/* Laboratory Workspace: Restricted to Lab Techs and Admins */}
+                  <Route element={<ProtectedRoute allowedRoles={["LAB_TECHNICIAN", "ADMIN"]} />}>
+                    <Route path="/labs/queue" element={<LabQueue />} />
+                  </Route>
 
                   {/* Pharmacy Workspace: Restricted to Pharmacists and Admins */}
                   <Route element={<ProtectedRoute allowedRoles={["PHARMACIST", "ADMIN"]} />}>
@@ -80,14 +84,25 @@ export const App: React.FC = () => {
                   </Route>
 
                   {/* System Management Workspace: Restricted to Administrators */}
-                  <Route element={<ProtectedRoute allowedRoles={["ADMIN", "SUPER_ADMIN"]} />}>
+                  <Route element={<ProtectedRoute allowedRoles={["ADMIN", "SUPER_ADMIN"]} requiredPermissions={["system:user:view"]} />}>
                     <Route path="/admin/users" element={<UserManagement />} />
                   </Route>
 
+                  {/* Permission Management Console: Guarded by system:permission:view */}
+                  <Route element={<ProtectedRoute requiredPermissions={["system:permission:view"]} />}>
+                    <Route path="/admin/permissions" element={<PermissionManagement />} />
+                  </Route>
+
+                  {/* Role Management Console: Guarded by system:role:view */}
+                  <Route element={<ProtectedRoute requiredPermissions={["system:role:view"]} />}>
+                    <Route path="/admin/roles" element={<RoleManagement />} />
+                  </Route>
+
+                </Route>
               </Route>
-            </Route>
-          </Routes>
-        </Router>
+            </Routes>
+          </Router>
+        </PermissionProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

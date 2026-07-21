@@ -5,7 +5,9 @@ import {
   loginUser,
   logoutUser,
   refreshSession,
+  getUserPermissions,
 } from "../controllers/auth.controller.js";
+import { authenticateJWT } from "../middleware/auth.middleware.js";
 import { registerSchema, loginSchema } from "../validators/auth.validator.js";
 
 const router = Router();
@@ -21,5 +23,8 @@ router.post("/logout", logoutUser);
 
 // Refresh session token
 router.post("/refresh", refreshSession);
+
+// Get current effective permissions
+router.get("/permissions", authenticateJWT, getUserPermissions);
 
 export default router;

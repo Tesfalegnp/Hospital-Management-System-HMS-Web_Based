@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "../../services/api";
 import Button from "../../components/ui/Button";
+import PermissionGate from "../../components/auth/PermissionGate";
 import {
   UserPlus, Search, Edit2, Key, CheckCircle, XCircle, Users,
   Home, Briefcase, Filter, X, ArrowLeft, ArrowRight
@@ -42,7 +43,14 @@ export const UserManagement: React.FC = () => {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isResetOpen, setIsResetOpen] = useState(false);
+  const [isRolesDrawerOpen, setIsRolesDrawerOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+
+  // User roles assignment and preview state
+  const [activeTab, setActiveTab] = useState<"roles" | "permissions">("roles");
+  const [roleToAssignId, setRoleToAssignId] = useState("");
+  const [scopeBranchId, setScopeBranchId] = useState("");
+  const [previewBranchId, setPreviewBranchId] = useState("");
 
   // Form states
   const [formData, setFormData] = useState({
@@ -104,6 +112,72 @@ export const UserManagement: React.FC = () => {
   const filteredDepartments = formData.branchId
     ? departments.filter((d) => d.branchId === formData.branchId)
     : departments;
+
+  // 3. Fetch all active RoleDefinitions
+  const { data: rolesDropdownData } = useQuery({
+    queryKey: ["rolesDropdown"],
+    queryFn: async () => {
+      const res = await api.get("/roles", { params: { limit: 100, isActive: true } });
+      return res.data;
+    },
+    enabled: isRolesDrawerOpen,
+  });
+  const availableRoles = rolesDropdownData?.data || [];
+
+  // 4. Fetch User Role Assignments
+  const { data: userRolesData, refetch: refetchUserRoles, isLoading: isUserRolesLoading } = useQuery({
+    queryKey: ["userRolesList", selectedUser?.id],
+    queryFn: async () => {
+      if (!selectedUser) return [];
+      const res = await api.get(`/users/${selectedUser.id}/roles`);
+      return res.data;
+    },
+    enabled: !!selectedUser && isRolesDrawerOpen,
+  });
+  const userRolesList = userRolesData?.data || [];
+
+  // 5. Fetch computed effective permissions preview
+  const { data: effectivePermissionsData, isLoading: isPermissionsPreviewLoading } = useQuery({
+    queryKey: ["userEffectivePermissions", selectedUser?.id, previewBranchId],
+    queryFn: async () => {
+      if (!selectedUser) return null;
+      const res = await api.get(`/users/${selectedUser.id}/effective-permissions`, {
+        params: { branchId: previewBranchId || undefined },
+      });
+      return res.data;
+    },
+    enabled: !!selectedUser && isRolesDrawerOpen && activeTab === "permissions",
+  });
+  const effectivePermissionsResult = effectivePermissionsData?.data || { grantedPermissions: [], deniedPermissions: [] };
+
+  // Mutations for Role Assignment
+  const assignRoleMutation = useMutation({
+    mutationFn: async (payload: { roleId: string; branchId?: string | null }) => {
+      return api.post(`/users/${selectedUser?.id}/roles`, payload);
+    },
+    onSuccess: () => {
+      refetchUserRoles();
+      showSuccess("Enterprise role assigned successfully.");
+      setRoleToAssignId("");
+      setScopeBranchId("");
+    },
+    onError: (err: any) => {
+      setErrorMsg(err.response?.data?.message || "Failed to assign role.");
+    },
+  });
+
+  const revokeRoleMutation = useMutation({
+    mutationFn: async (userRoleId: string) => {
+      return api.delete(`/users/${selectedUser?.id}/roles/${userRoleId}`);
+    },
+    onSuccess: () => {
+      refetchUserRoles();
+      showSuccess("Role assignment revoked successfully.");
+    },
+    onError: (err: any) => {
+      setErrorMsg(err.response?.data?.message || "Failed to revoke role assignment.");
+    },
+  });
 
   // Mutations
   const createUserMutation = useMutation({
@@ -202,6 +276,26 @@ export const UserManagement: React.FC = () => {
     setIsResetOpen(true);
   };
 
+  const handleOpenRoles = (user: UserProfile) => {
+    setErrorMsg(null);
+    setSelectedUser(user);
+    setActiveTab("roles");
+    setRoleToAssignId("");
+    setScopeBranchId("");
+    setPreviewBranchId("");
+    setIsRolesDrawerOpen(true);
+  };
+
+  const handleAssignRoleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUser || !roleToAssignId) return;
+    setErrorMsg(null);
+    assignRoleMutation.mutate({
+      roleId: roleToAssignId,
+      branchId: scopeBranchId || null,
+    });
+  };
+
   const handleCreateSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
@@ -280,13 +374,15 @@ export const UserManagement: React.FC = () => {
             Create, edit, deactivate, or reset passwords for hospital accounts.
           </p>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="mt-4 md:mt-0 inline-flex items-center space-x-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer"
-        >
-          <UserPlus className="h-4 w-4" />
-          <span>Add System User</span>
-        </button>
+        <PermissionGate permission="system:user:create">
+          <button
+            onClick={handleOpenCreate}
+            className="mt-4 md:mt-0 inline-flex items-center space-x-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-semibold shadow-sm transition cursor-pointer"
+          >
+            <UserPlus className="h-4 w-4" />
+            <span>Add System User</span>
+          </button>
+        </PermissionGate>
       </div>
 
       {/* Success Alert */}
@@ -469,6 +565,17 @@ export const UserManagement: React.FC = () => {
                         >
                           <Edit2 className="h-3.5 w-3.5" />
                         </button>
+
+                        {/* Manage Roles */}
+                        <PermissionGate permission="system:user-role:view">
+                          <button
+                            onClick={() => handleOpenRoles(item)}
+                            title="Manage Roles & Permissions"
+                            className="p-1.5 border border-gray-100 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg text-indigo-600 cursor-pointer transition shadow-3xs"
+                          >
+                            <Users className="h-3.5 w-3.5" />
+                          </button>
+                        </PermissionGate>
 
                         {/* Reset password */}
                         <button
@@ -910,6 +1017,231 @@ export const UserManagement: React.FC = () => {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Roles Drawer / Modal */}
+      {isRolesDrawerOpen && selectedUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-end bg-gray-900/40 backdrop-blur-xs">
+          <div className="bg-white border-l border-gray-200 h-full max-w-2xl w-full flex flex-col shadow-2xl overflow-hidden animate-slide-in">
+            {/* Drawer Header */}
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gray-50/60">
+              <div>
+                <h3 className="text-sm font-extrabold text-gray-900">
+                  Manage Roles & Permissions: {selectedUser.firstName} {selectedUser.lastName}
+                </h3>
+                <p className="text-4xs text-gray-500 font-semibold">{selectedUser.email}</p>
+              </div>
+              <button
+                onClick={() => setIsRolesDrawerOpen(false)}
+                className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 cursor-pointer"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Tab navigation */}
+            <div className="flex border-b border-gray-100 bg-gray-50/30 px-5">
+              <button
+                onClick={() => setActiveTab("roles")}
+                className={`py-3 px-4 text-xs font-bold border-b-2 cursor-pointer transition-all ${
+                  activeTab === "roles"
+                    ? "border-indigo-600 text-indigo-700 font-extrabold"
+                    : "border-transparent text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                Role Assignments
+              </button>
+              <button
+                onClick={() => setActiveTab("permissions")}
+                className={`py-3 px-4 text-xs font-bold border-b-2 cursor-pointer transition-all ${
+                  activeTab === "permissions"
+                    ? "border-indigo-600 text-indigo-700 font-extrabold"
+                    : "border-transparent text-gray-500 hover:text-gray-900"
+                }`}
+              >
+                Effective Permissions Preview
+              </button>
+            </div>
+
+            {/* Drawer Body */}
+            <div className="flex-1 p-5 space-y-6 overflow-y-auto">
+              {errorMsg && (
+                <div className="p-3 bg-red-50 text-red-700 rounded-lg text-4xs font-bold border border-red-100">
+                  {errorMsg}
+                </div>
+              )}
+
+              {activeTab === "roles" ? (
+                <div className="space-y-6">
+                  {/* Assign Role Form */}
+                  <PermissionGate permission="system:user-role:create">
+                    <form
+                      onSubmit={handleAssignRoleSubmit}
+                      className="p-4 bg-indigo-50/40 border border-indigo-100 rounded-xl space-y-4 text-xs font-semibold text-gray-600"
+                    >
+                      <h4 className="text-4xs font-extrabold uppercase tracking-wider text-indigo-900">
+                        Assign New Enterprise Role
+                      </h4>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block mb-1">Select Role</label>
+                          <select
+                            required
+                            value={roleToAssignId}
+                            onChange={(e) => setRoleToAssignId(e.target.value)}
+                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          >
+                            <option value="">Choose role definition...</option>
+                            {availableRoles.map((r: any) => (
+                              <option key={r.id} value={r.id}>
+                                {r.name} ({r.code})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block mb-1">Clinic Branch Scope (Optional)</label>
+                          <select
+                            value={scopeBranchId}
+                            onChange={(e) => setScopeBranchId(e.target.value)}
+                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                          >
+                            <option value="">Global Scope (All Branches)</option>
+                            {branches.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <button
+                          type="submit"
+                          disabled={!roleToAssignId || assignRoleMutation.isPending}
+                          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold transition cursor-pointer disabled:opacity-50"
+                        >
+                          {assignRoleMutation.isPending ? "Assigning..." : "Assign Role"}
+                        </button>
+                      </div>
+                    </form>
+                  </PermissionGate>
+
+                  {/* Current Assignments list */}
+                  <div className="space-y-3">
+                    <h4 className="text-4xs font-extrabold uppercase tracking-wider text-gray-500">
+                      Active Role Assignments
+                    </h4>
+
+                    {isUserRolesLoading ? (
+                      <div className="text-center py-6 text-gray-400 text-xs font-semibold">
+                        Loading active role mappings...
+                      </div>
+                    ) : userRolesList.length === 0 ? (
+                      <div className="p-6 text-center text-gray-400 text-xs font-semibold border border-dashed border-gray-200 rounded-xl">
+                        No enterprise roles assigned to this user yet.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {userRolesList.map((ur: any) => (
+                          <div
+                            key={ur.id}
+                            className="p-3 bg-white border border-gray-100 rounded-lg shadow-2xs flex items-center justify-between hover:border-gray-200 transition-colors"
+                          >
+                            <div>
+                              <p className="font-bold text-gray-900 text-xs leading-none">{ur.role.name}</p>
+                              <p className="font-mono text-5xs text-indigo-600 font-bold mt-1">{ur.role.code}</p>
+                              <div className="flex items-center space-x-2 mt-1.5 text-5xs text-gray-400 font-semibold">
+                                <span className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 uppercase font-bold">
+                                  Scope: {ur.branch?.name || "Global / All Branches"}
+                                </span>
+                                <span>Level {ur.role.level ?? 0}</span>
+                              </div>
+                            </div>
+
+                            <PermissionGate permission="system:user-role:update">
+                              <button
+                                onClick={() => {
+                                  if (window.confirm("Are you sure you want to revoke this role assignment?")) {
+                                    revokeRoleMutation.mutate(ur.id);
+                                  }
+                                }}
+                                className="p-1.5 text-red-500 hover:bg-red-50 rounded transition cursor-pointer"
+                                title="Revoke Role Assignment"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </PermissionGate>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-5">
+                  {/* Select Scope for preview */}
+                  <div className="p-4 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-between text-xs font-semibold text-gray-600">
+                    <label>Filter Preview by Scope Branch:</label>
+                    <select
+                      value={previewBranchId}
+                      onChange={(e) => setPreviewBranchId(e.target.value)}
+                      className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg font-medium text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">Global / All Branches</option>
+                      {branches.map((b) => (
+                        <option key={b.id} value={b.id}>
+                          {b.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Effective permissions list */}
+                  <div className="space-y-3">
+                    <h4 className="text-4xs font-extrabold uppercase tracking-wider text-gray-500">
+                      Resolved Effective Permissions
+                    </h4>
+
+                    {isPermissionsPreviewLoading ? (
+                      <div className="text-center py-6 text-gray-400 text-xs font-semibold">
+                        Computing effective permissions matrix...
+                      </div>
+                    ) : effectivePermissionsResult.grantedPermissions.length === 0 ? (
+                      <div className="p-6 text-center text-gray-400 text-xs font-semibold border border-dashed border-gray-200 rounded-xl">
+                        No effective permissions granted under the selected scope.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-medium">
+                        {effectivePermissionsResult.grantedPermissions.map((code: string) => (
+                          <div
+                            key={code}
+                            className="p-2.5 bg-emerald-50/50 border border-emerald-100 text-emerald-800 rounded-lg flex items-center space-x-2"
+                          >
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                            <span className="font-mono text-5xs leading-none">{code}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Drawer Footer */}
+            <div className="p-4 border-t border-gray-100 bg-gray-55/40 text-right">
+              <button
+                onClick={() => setIsRolesDrawerOpen(false)}
+                className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-50 transition cursor-pointer"
+              >
+                Close Panel
+              </button>
+            </div>
           </div>
         </div>
       )}

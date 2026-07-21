@@ -101,6 +101,9 @@ model Hospital {
   featureFlags  FeatureFlag[]
   apiKeys       ApiKey[]
 
+  userRoles           UserRole[]
+  permissionOverrides UserPermissionOverride[]
+
   @@index([name])
 }
 
@@ -156,6 +159,9 @@ model Branch {
   systemConfigs    SystemConfig[]
   featureFlags     FeatureFlag[]
   apiKeys          ApiKey[]
+
+  userRoles           UserRole[]
+  permissionOverrides UserPermissionOverride[]
 
   @@unique([hospitalId, code])
   @@index([hospitalId])
@@ -242,16 +248,18 @@ model User {
   updatedAt DateTime @updatedAt
 
   deletedAt             DateTime?
-  labOrders             LabOrder[]             @relation("UserLabOrders")
+  labOrders             LabOrder[]               @relation("UserLabOrders")
   inventoryTransactions InventoryTransaction[]
-  pharmacistDispenses   DispenseRecord[]       @relation("PharmacistDispenses")
-  witnessDispenses      DispenseRecord[]       @relation("WitnessDispenses")
+  pharmacistDispenses   DispenseRecord[]         @relation("PharmacistDispenses")
+  witnessDispenses      DispenseRecord[]         @relation("WitnessDispenses")
   payments              Payment[]
   recordedVitals        VitalsLog[]
-  collectedSpecimens    LabOrder[]             @relation("SpecimenCollectors")
-  performedLabResults   LabResult[]            @relation("PerformingTechnicians")
-  approvedLabResults    LabResult[]            @relation("ApprovingPathologists")
+  collectedSpecimens    LabOrder[]               @relation("SpecimenCollectors")
+  performedLabResults   LabResult[]              @relation("PerformingTechnicians")
+  approvedLabResults    LabResult[]              @relation("ApprovingPathologists")
   auditLogs             AuditLog[]
+  userRoles             UserRole[]
+  permissionOverrides   UserPermissionOverride[]
 
   @@index([email])
   @@index([role])
@@ -1093,6 +1101,7 @@ model Permission {
   branch   Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict)
 
   rolePermissions RolePermission[]
+  userOverrides   UserPermissionOverride[]
 
   @@index([module])
   @@index([resource])
@@ -1137,6 +1146,7 @@ model RoleDefinition {
 
   rolePermissions RolePermission[]
   apiKeys         ApiKey[]
+  userRoles       UserRole[]
 
   @@unique([hospitalId, name])
   @@unique([branchId, name])
@@ -1361,4 +1371,61 @@ model ApiKey {
   @@index([branchId])
   @@index([rotatedFromId])
   @@index([keyPrefix, status, deletedAt])
+}
+
+// ================================
+// USER ROLE JUNCTION (SA-001H)
+// ================================
+
+model UserRole {
+  id         String  @id @default(cuid())
+  userId     String
+  roleId     String
+  hospitalId String?
+  branchId   String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Restrict)
+  role     RoleDefinition @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  hospital Hospital?      @relation(fields: [hospitalId], references: [id], onDelete: Restrict)
+  branch   Branch?        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, roleId, hospitalId, branchId])
+  @@index([userId])
+  @@index([roleId])
+  @@index([hospitalId])
+  @@index([branchId])
+}
+
+// ================================
+// USER PERMISSION OVERRIDE (SA-001I)
+// ================================
+
+model UserPermissionOverride {
+  id           String    @id @default(cuid())
+  userId       String
+  permissionId String
+  isGranted    Boolean   @default(true)
+  reason       String?   @db.Text
+  expiresAt    DateTime?
+
+  hospitalId String?
+  branchId   String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Restrict)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Restrict)
+  hospital   Hospital?  @relation(fields: [hospitalId], references: [id], onDelete: Restrict)
+  branch     Branch?    @relation(fields: [branchId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, permissionId, hospitalId, branchId])
+  @@index([userId])
+  @@index([permissionId])
+  @@index([isGranted])
 }
